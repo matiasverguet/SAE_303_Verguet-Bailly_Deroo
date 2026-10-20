@@ -1,9 +1,27 @@
 ---
-import * as Plot from "@observablehq/plot";
+// Route A : le graphique est calculé au build (jsdom) et livré en SVG statique.
+// Aucun JavaScript côté lecteur.
 import { JSDOM } from "jsdom";
-const { options } = Astro.props;
+import Figure from "./Figure.astro";
 
-const plot = Plot.plot({ ...options, document: new JSDOM("").window.document });
+interface Props {
+  id: string;
+  numero?: string;
+  titre: string;
+  sousTitre: string;
+  source: string;
+  alt: string;
+  defilable?: boolean;
+  consigne?: string;
+  interactif?: boolean;
+  barresSurvol?: boolean;
+  /** Reçoit le `document` jsdom et renvoie le graphique, ex. (document) => barresCommunes(data, { document }) */
+  render: (document: Document) => Element;
+}
+const { render, ...figure } = Astro.props;
+const plot = render(new JSDOM("").window.document);
 ---
 
-<div set:html={plot.outerHTML} />
+<Figure {...figure} route="A">
+  <Fragment set:html={plot.outerHTML} />
+</Figure>

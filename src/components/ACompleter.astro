@@ -1,0 +1,19 @@
+---
+// Affiche un texte, ou une pastille « à compléter » si la valeur commence par TODO.
+// Évite de publier un chiffre ou une mention non vérifiés tout en gardant la page lisible.
+interface Props {
+  valeur: string;
+}
+const { valeur } = Astro.props;
+const manque = valeur.trim().startsWith("TODO");
+---
+
+{
+  manque ? (
+    <span class="inline-block border border-dashed border-gris px-2 text-sm text-gris" title={valeur}>
+      à compléter
+    </span>
+  ) : (
+    <Fragment>{valeur}</Fragment>
+  )
+}

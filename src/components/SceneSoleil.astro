@@ -1,0 +1,196 @@
+---
+// Illustration d'en-tête : les 28 communes en plan incliné (CSS 3D), et un soleil qui traverse
+// le ciel en éclairant les communes sur son passage. Ce n'est PAS une donnée : c'est un décor,
+// signalé comme tel sous la scène. Sans bibliothèque 3D (léger, rapide) : SVG + transformations CSS.
+// Interactions : la scène suit légèrement la souris ; chaque commune est un lien vers sa fiche.
+import { geoMercator, geoPath, geoCentroid } from "d3-geo";
+import contours from "../assets/communes-contours.json";
+
+const T = 800; // côté du plan, en unités SVG
+const projection = geoMercator().fitExtent([[40, 40], [T - 40, T - 40]], contours as any);
+const chemin = geoPath(projection);
+const formes = (contours as any).features.map((f: any) => {
+  const [cx, cy] = projection(geoCentroid(f)) as [number, number];
+  return { code: f.properties.insee, nom: f.properties.nom, d: chemin(f) as string, cx: +cx.toFixed(1), cy: +cy.toFixed(1) };
+});
+const epaisseur = [16, 12, 8, 4]; // couches empilées sous la carte : effet de relief
+---
+
+<div class="scene relative mx-auto aspect-square w-full max-w-[38rem] select-none" data-scene>
+  <!-- Lueur du ciel, plus chaude quand le soleil est haut -->
+  <div class="pointer-events-none absolute inset-[-15%] -z-10 rounded-full blur-3xl" data-lueur aria-hidden="true"></div>
+
+  <div class="plan absolute inset-0" data-plan>
+    {
+      epaisseur.map((z) => (
+        <svg viewBox={`0 0 ${T} ${T}`} class="absolute inset-0 h-full w-full" style={`transform: translateZ(-${z}px)`} aria-hidden="true">
+          {formes.map((f) => <path d={f.d} fill={z === 16 ? "#020305" : "#0a0e14"} />)}
+        </svg>
+      ))
+    }
+
+    <svg viewBox={`0 0 ${T} ${T}`} class="absolute inset-0 h-full w-full overflow-visible" role="group" aria-label="Carte des 28 communes : chaque commune ouvre sa fiche">
+      <defs>
+        <radialGradient id="lumiere-sol">
+          <stop offset="0%" stop-color="#ffd27a" stop-opacity="0.55" />
+          <stop offset="45%" stop-color="#f39237" stop-opacity="0.18" />
+          <stop offset="100%" stop-color="#f39237" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+      {
+        formes.map((f) => (
+          <a href={`/communes/${f.code}/`} class="commune" data-nom={f.nom} data-cx={f.cx} data-cy={f.cy}>
+            <title>{f.nom} — ouvrir la fiche</title>
+            <path d={f.d} fill="#1a2230" stroke="#8fb3ff" stroke-opacity="0.35" stroke-width="1.2" />
+          </a>
+        ))
+      }
+      <!-- Tache de lumière au sol, sous le soleil -->
+      <circle data-tache cx="400" cy="400" r="230" fill="url(#lumiere-sol)" class="pointer-events-none mix-blend-screen" />
+    </svg>
+
+    <!-- Le soleil, au-dessus du plan (translateZ), toujours tourné vers le lecteur -->
+    <div class="soleil pointer-events-none absolute top-0 left-0" data-soleil aria-hidden="true">
+      <div class="soleil-face">
+        <div class="absolute inset-[-140%] rounded-full bg-[radial-gradient(circle,rgba(255,210,122,0.35),transparent_65%)]"></div>
+        <div class="relative size-full rounded-full bg-[radial-gradient(circle_at_35%_35%,#fff6d8,#ffd27a_45%,#f39237)] shadow-[0_0_60px_20px_rgba(255,190,90,0.45)]"></div>
+      </div>
+    </div>
+  </div>
+
+  <p data-etiquette class="pointer-events-none absolute top-3 left-1/2 -translate-x-1/2 rounded-full border border-cobalt/40 bg-nuit/80 px-3 py-1 text-sm whitespace-nowrap text-encre opacity-0 backdrop-blur transition-opacity duration-200" aria-hidden="true"></p>
+</div>
+<p class="mt-2 text-center text-xs text-gris">Illustration : la course du soleil au-dessus des 28 communes (ce n'est pas une donnée).</p>
+
+<style>
+  .scene {
+    perspective: 1400px;
+    perspective-origin: 50% 20%;
+  }
+  .plan {
+    --rx: 56deg;
+    --rz: -18deg;
+    transform-style: preserve-3d;
+    transform: rotateX(var(--rx)) rotateZ(var(--rz));
+    will-change: transform;
+  }
+  .soleil {
+    width: 11%;
+    aspect-ratio: 1;
+    transform-style: preserve-3d;
+  }
+  .soleil-face {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    /* annule l'inclinaison du plan : le disque reste face au lecteur */
+    transform: rotateZ(calc(var(--rz) * -1)) rotateX(calc(var(--rx) * -1));
+  }
+  .commune path {
+    transition: stroke-opacity 0.2s, stroke-width 0.2s;
+  }
+  .commune:hover path,
+  .commune:focus-visible path {
+    stroke: #edf0f3;
+    stroke-opacity: 1;
+    stroke-width: 3;
+  }
+  .commune:focus-visible {
+    outline: none;
+  }
+</style>
+
+<script>
+  const scene = document.querySelector<HTMLElement>("[data-scene]");
+  if (scene) {
+    const plan = scene.querySelector<HTMLElement>("[data-plan]")!;
+    const soleil = scene.querySelector<HTMLElement>("[data-soleil]")!;
+    const tache = scene.querySelector<SVGCircleElement>("[data-tache]")!;
+    const lueur = scene.querySelector<HTMLElement>("[data-lueur]")!;
+    const etiquette = scene.querySelector<HTMLElement>("[data-etiquette]")!;
+    const communes = [...scene.querySelectorAll<SVGAElement>(".commune")].map((a) => ({
+      chemin: a.querySelector("path")!,
+      x: Number(a.dataset.cx),
+      y: Number(a.dataset.cy),
+    }));
+    const calme = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const T = 800;
+    const DUREE = 16000; // une journée en 16 secondes
+
+    // Couleurs : nuit → braise → soleil (mélange linéaire)
+    const nuit = [26, 34, 48], braise = [207, 90, 36], or = [255, 210, 122];
+    const melange = (a: number[], b: number[], t: number) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+    const couleur = (k: number) => {
+      const c = k < 0.6 ? melange(nuit, braise, k / 0.6) : melange(braise, or, (k - 0.6) / 0.4);
+      return `rgb(${c[0]},${c[1]},${c[2]})`;
+    };
+
+    function dessiner(t: number) {
+      // Course du soleil : d'est (droite) en ouest (gauche), en arc au-dessus du plan
+      const jour = Math.sin(Math.PI * t); // 0 à l'aube, 1 à midi, 0 au couchant
+      const sx = T * (0.95 - 1.1 * t); // décalé vers la gauche
+      const sy = T * (0.6 - 0.12 * jour);
+      // Hauteur au-dessus du plan, en proportion de la taille de la scène :
+      // assez haut pour flotter au-dessus de la carte, assez bas pour rester dans le cadre
+      const hauteur = (0.12 + 0.28 * jour) * plan.clientWidth;
+      const echelle = plan.clientWidth / T;
+
+      soleil.style.transform = `translate3d(${sx * echelle}px, ${sy * echelle}px, ${hauteur}px) translate(-50%, -50%)`;
+      soleil.style.opacity = String(Math.min(1, 0.55 + jour));
+      tache.setAttribute("cx", sx.toFixed(1));
+      tache.setAttribute("cy", sy.toFixed(1));
+      tache.setAttribute("opacity", jour.toFixed(2));
+      lueur.style.background = `radial-gradient(circle at ${(sx / T) * 100}% 40%, rgba(243,146,55,${0.1 + 0.18 * jour}), transparent 60%)`;
+
+      for (const c of communes) {
+        const d = Math.hypot(c.x - sx, c.y - sy);
+        const k = Math.max(0, 1 - d / 420) * jour;
+        c.chemin.setAttribute("fill", couleur(k));
+      }
+    }
+
+    // Inclinaison qui suit la souris (lissée)
+    let cibleX = 0, cibleY = 0, tiltX = 0, tiltY = 0;
+    const hero = scene.closest("header") ?? scene;
+    if (!calme) {
+      hero.addEventListener("pointermove", (e) => {
+        const r = hero.getBoundingClientRect();
+        cibleX = ((e as PointerEvent).clientX - r.left) / r.width - 0.5;
+        cibleY = ((e as PointerEvent).clientY - r.top) / r.height - 0.5;
+      });
+      hero.addEventListener("pointerleave", () => { cibleX = 0; cibleY = 0; });
+    }
+
+    // Nom de la commune survolée (ou atteinte au clavier)
+    const montrer = (e: Event) => {
+      const a = (e.target as Element).closest<SVGAElement>(".commune");
+      if (!a) return;
+      etiquette.textContent = `${a.dataset.nom} → voir la fiche`;
+      etiquette.style.opacity = "1";
+    };
+    const cacher = () => (etiquette.style.opacity = "0");
+    scene.addEventListener("pointerover", montrer);
+    scene.addEventListener("focusin", montrer);
+    scene.addEventListener("pointerleave", cacher);
+    scene.addEventListener("focusout", cacher);
+
+    if (calme) {
+      dessiner(0.5); // soleil au zénith, sans mouvement
+    } else {
+      let visible = true;
+      new IntersectionObserver(([e]) => (visible = e.isIntersecting)).observe(scene);
+      const depart = performance.now();
+      const boucle = (now: number) => {
+        if (visible) {
+          dessiner(((now - depart) % DUREE) / DUREE);
+          tiltX += (cibleX - tiltX) * 0.06;
+          tiltY += (cibleY - tiltY) * 0.06;
+          plan.style.setProperty("--rx", `${56 - tiltY * 10}deg`);
+          plan.style.setProperty("--rz", `${-22 + tiltX * 14}deg`);
+        }
+        requestAnimationFrame(boucle);
+      };
+      requestAnimationFrame(boucle);
+    }
+  }
+</script>

@@ -1,0 +1,52 @@
+---
+// Enveloppe accessible commune à toutes les visualisations :
+// <figure> + titre porteur + sous-titre + source/date + alternative textuelle.
+interface Props {
+  id: string;
+  numero?: string;      // « Fig. 1 »
+  titre: string;        // titre porteur : ce qu'il faut retenir
+  sousTitre: string;    // ce qu'on mesure, sur quel périmètre, avec quel dénominateur
+  source: string;       // producteur + millésime
+  alt: string;          // alternative textuelle en 4 temps
+  route?: "A" | "B" | "C";
+  defilable?: boolean;  // graphique trop dense pour être réduit sur mobile
+  consigne?: string;    // interaction disponible, dite en toutes lettres (ex. « Cliquez sur une commune… »)
+  interactif?: boolean; // carte dont les communes sont des liens (survol mis en valeur)
+  barresSurvol?: boolean; // diagramme en barres : la barre survolée reste orange, les autres passent en gris
+}
+const { id, numero, titre, sousTitre, source, alt, route, defilable = false, consigne, interactif = false, barresSurvol = false } = Astro.props;
+const routes = { A: "calculé à la construction du site", B: "calculé dans votre navigateur", C: "une page par commune" };
+---
+
+<figure id={id} data-revele class="my-12 rounded-2xl border border-filet bg-voile p-5 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.8)] sm:p-8" aria-labelledby={`${id}-titre`} aria-describedby={`${id}-alt`}>
+  <figcaption class="mb-6 max-w-3xl">
+    {numero && <p class="surtitre text-cobalt">{numero}</p>}
+    <p id={`${id}-titre`} class="mt-1 text-xl leading-tight font-bold sm:text-2xl">{titre}</p>
+    <p class="mt-2 text-[0.9375rem] text-gris">{sousTitre}</p>
+    {
+      consigne && (
+        <p class="mt-4 inline-flex items-center gap-2 rounded-full border border-cobalt/40 bg-cobalt-voile px-3 py-1 text-sm text-cobalt">
+          <svg viewBox="0 0 16 16" class="size-4" aria-hidden="true"><path d="M5 2v8l2-2 2 5 2-1-2-5h3z" fill="currentColor" /></svg>
+          {consigne}
+        </p>
+      )
+    }
+  </figcaption>
+
+  <div class:list={["text-encre", defilable && "overflow-x-auto [&>svg]:min-w-[34rem] [&>figure>svg]:min-w-[34rem]", interactif && "carte-interactive", barresSurvol && "barres-survol"]}>
+    <slot />
+  </div>
+
+  <footer class="mt-5 flex flex-col gap-2 border-t border-filet pt-3 text-[0.8125rem] text-gris sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+    <p>
+      <span class="font-semibold text-encre">Source</span> — {source}
+      {route && <span class="block sm:inline"><span class="hidden sm:inline"> · </span>Graphique {routes[route]}</span>}
+    </p>
+    <details class="group shrink-0 sm:max-w-sm sm:text-right">
+      <summary class="cursor-pointer font-semibold text-encre marker:content-none">
+        <span class="underline decoration-filet underline-offset-4 transition-colors group-open:decoration-cobalt hover:text-cobalt">Lire le graphique en texte</span>
+      </summary>
+      <p id={`${id}-alt`} class="mt-2 text-left text-sm text-encre">{alt}</p>
+    </details>
+  </footer>
+</figure>

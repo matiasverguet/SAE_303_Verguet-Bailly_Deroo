@@ -1,26 +1,189 @@
 ---
 import "../styles/global.css";
+import { site } from "../site.config.js";
+// Précharge les polices des titres et du texte (évite le décalage de mise en page au chargement)
+import archivo from "@fontsource-variable/archivo/files/archivo-latin-standard-normal.woff2?url";
+import sourceSerif from "@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2?url";
+
+interface Props {
+  titre?: string;
+  description?: string;
+}
+const { titre, description = site.description } = Astro.props;
+const titrePage = titre ? `${titre} · ${site.titre}` : site.titre;
+const chemin = Astro.url.pathname;
+const liens = [
+  { href: "/", label: "Le récit" },
+  { href: "/communes/", label: "Les 28 communes" },
+  { href: "/methode/", label: "Méthode" },
+];
+const actif = (href: string) => (href === "/" ? chemin === "/" : chemin.startsWith(href));
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#07090c" />
+    <meta name="color-scheme" content="dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href={archivo} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={sourceSerif} as="font" type="font/woff2" crossorigin />
     <meta name="generator" content={Astro.generator} />
-    <title>Astro Basics</title>
+    <title>{titrePage}</title>
+    <!-- Les animations d'apparition ne s'activent que si JavaScript tourne : sans JS, tout reste visible -->
+    <script is:inline>document.documentElement.classList.add("js");</script>
   </head>
-  <body>
-    <slot />
+  <body class="flex min-h-screen flex-col">
+    <a
+      href="#contenu"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:bg-encre focus:px-4 focus:py-2 focus:text-papier"
+    >
+      Aller au contenu
+    </a>
+
+    <!-- Barre de progression de lecture -->
+    <div class="pointer-events-none fixed inset-x-0 top-0 z-50 h-[3px]" aria-hidden="true">
+      <div data-progression class="h-full origin-left scale-x-0 bg-cobalt"></div>
+    </div>
+
+
+    {
+      site.donneesDemo && (
+        <div role="note" class="border-b border-filet bg-nuit px-4 py-2 text-center text-sm text-gris">
+          <span class="font-semibold text-cobalt">Version de travail</span> — les chiffres affichés sont provisoires
+          et ne doivent pas être cités.
+        </div>
+      )
+    }
+
+    <header class="sticky top-0 z-40 border-b border-filet bg-papier/75 backdrop-blur-md">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-8 gap-y-2 px-4 py-3 sm:px-6">
+        <a href="/" class="group flex items-center gap-3 text-encre no-underline">
+          <svg viewBox="0 0 32 32" class="size-8 shrink-0 transition-transform duration-300 group-hover:rotate-[-8deg]" aria-hidden="true">
+            <rect width="32" height="32" rx="6" fill="#141d2e" />
+            <path d="M4 22c5-6 9 2 14-4s7-3 10-6" fill="none" stroke="#8fb3ff" stroke-width="2.5" />
+            <circle cx="22" cy="10" r="3" fill="#edf0f3" />
+          </svg>
+          <span class="condense text-xl leading-none font-extrabold tracking-tight uppercase sm:text-2xl">
+            {site.titre}
+          </span>
+        </a>
+        <nav aria-label="Navigation principale">
+          <ul class="flex gap-5 text-[0.9375rem] font-medium">
+            {
+              liens.map((l) => (
+                <li>
+                  <a
+                    href={l.href}
+                    aria-current={actif(l.href) ? "page" : undefined}
+                    class:list={[
+                      "relative block py-1 no-underline transition-colors",
+                      "after:absolute after:inset-x-0 after:-bottom-px after:h-[2px] after:origin-left after:bg-cobalt after:transition-transform after:duration-300",
+                      actif(l.href)
+                        ? "text-encre after:scale-x-100"
+                        : "text-gris after:scale-x-0 hover:text-encre hover:after:scale-x-100",
+                    ]}
+                  >
+                    {l.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <slot name="hero" />
+
+    <main id="contenu" class="mx-auto w-full max-w-6xl flex-1 px-4 sm:px-6">
+      <slot />
+    </main>
+
+    <footer class="mt-32 border-t border-filet bg-nuit">
+      <div class="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:grid-cols-3 sm:px-6">
+        <div>
+          <p class="condense text-2xl font-extrabold uppercase">{site.titre}</p>
+          <p class="mt-3 text-sm leading-relaxed text-gris">
+            Un projet de {site.auteurs.join(" et ")}, BUT MMI — SAÉ 303, en réponse au défi de l'Open Data University.
+          </p>
+        </div>
+        <div>
+          <p class="surtitre text-gris">Vérifier</p>
+          <ul class="mt-4 space-y-2 text-sm">
+            <li><a class="text-encre no-underline hover:text-cobalt" href="/methode/">Sources et méthode</a></li>
+            <li><a class="text-encre no-underline hover:text-cobalt" href="/methode/#telecharger">Télécharger les données</a></li>
+            <li><a class="text-encre no-underline hover:text-cobalt" href={site.notebook}>Notebook Observable</a></li>
+            <li><a class="text-encre no-underline hover:text-cobalt" href={site.depot}>Code source</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="surtitre text-gris">Le défi</p>
+          <ul class="mt-4 space-y-2 text-sm">
+            <li><a class="text-encre no-underline hover:text-cobalt" href={site.defi}>Prévention des risques à Bordeaux Métropole</a></li>
+            <li><a class="text-encre no-underline hover:text-cobalt" href="https://www.georisques.gouv.fr/mes-risques">Géorisques — les risques à mon adresse</a></li>
+          </ul>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const calme = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // 1. Apparition au défilement : [data-revele] (délai facultatif : data-delai="150")
+      const revele = new IntersectionObserver(
+        (entrees) => {
+          for (const e of entrees) {
+            if (!e.isIntersecting) continue;
+            e.target.classList.add("est-visible");
+            revele.unobserve(e.target);
+          }
+        },
+        { rootMargin: "0px 0px -10% 0px" },
+      );
+      document.querySelectorAll<HTMLElement>("[data-revele]").forEach((el) => {
+        if (el.dataset.delai) el.style.setProperty("--delai", `${el.dataset.delai}ms`);
+        revele.observe(el);
+      });
+
+      // 2. Compteurs : le chiffre final est déjà écrit dans la page (lisible sans JS) ;
+      //    on l'anime de 0 à sa valeur quand il arrive à l'écran.
+      const compteurs = new IntersectionObserver(
+        (entrees) => {
+          for (const e of entrees) {
+            if (!e.isIntersecting) continue;
+            compteurs.unobserve(e.target);
+            const el = e.target as HTMLElement;
+            const cible = Number(el.dataset.compte);
+            const decimales = Number(el.dataset.decimales ?? 0);
+            const suffixe = el.dataset.suffixe ?? "";
+            const format = (v: number) =>
+              v.toLocaleString("fr-FR", { minimumFractionDigits: decimales, maximumFractionDigits: decimales }) + suffixe;
+            const debut = performance.now();
+            const duree = 1400;
+            const pas = (t: number) => {
+              const p = Math.min(1, (t - debut) / duree);
+              el.textContent = format(cible * (1 - Math.pow(1 - p, 3)));
+              if (p < 1) requestAnimationFrame(pas);
+            };
+            requestAnimationFrame(pas);
+          }
+        },
+        { threshold: 0.6 },
+      );
+      if (!calme) document.querySelectorAll("[data-compte]").forEach((el) => compteurs.observe(el));
+
+      // 3. Barre de progression de lecture
+      const barre = document.querySelector<HTMLElement>("[data-progression]");
+      const majProgression = () => {
+        const max = document.documentElement.scrollHeight - innerHeight;
+        if (barre) barre.style.transform = `scaleX(${max > 0 ? scrollY / max : 0})`;
+      };
+      addEventListener("scroll", majProgression, { passive: true });
+      majProgression();
+    </script>
   </body>
 </html>
-
-<style>
-  html,
-  body {
-    margin: 0;
-    width: 100%;
-    height: 100%;
-  }
-</style>
