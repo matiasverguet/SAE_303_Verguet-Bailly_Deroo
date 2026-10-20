@@ -1,0 +1,118 @@
+---
+// Route C : une page statique par commune, générée au build.
+// Le lecteur peut arriver directement sur « sa » commune (lien partageable, référencé).
+// Comme au TP : getStaticPaths génère une page par valeur de la liste (ici, une par code INSEE).
+import Layout from "../../layouts/Layout.astro";
+import EnTetePage from "../../components/EnTetePage.astro";
+import PlotFigure from "../../components/PlotFigure.astro";
+import communes from "../../assets/communes.json";
+import contours from "../../assets/communes-contours.json";
+import { carteTaux, tauxMetropole, pct, nb, rangTexte } from "../../lib/charts.js";
+import { barre } from "../../lib/palette.js";
+
+export function getStaticPaths() {
+  return communes.map((d) => ({ params: { code: d.insee }, props: { d } }));
+}
+
+const { d } = Astro.props;
+const ref = tauxMetropole(communes);
+const tri = [...communes].sort((a, b) => b.part_ind - a.part_ind);
+const rang = tri.findIndex((c) => c.insee === d.insee) + 1;
+const ecart = d.part_ind - ref;
+const max = Math.max(...communes.map((c) => c.part_ind));
+const partMenages = (d.men_icu / d.men) * 100;
+const ecartTexte = `${Math.abs(ecart).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} point${Math.abs(ecart) >= 2 ? "s" : ""}`;
+const parNom = [...communes].sort((a, b) => a.commune.localeCompare(b.commune, "fr"));
+const i = parNom.findIndex((c) => c.insee === d.insee);
+const precedente = parNom[(i - 1 + parNom.length) % parNom.length];
+const suivante = parNom[(i + 1) % parNom.length];
+---
+
+<Layout titre={d.commune} description={`${d.commune} : ${Math.round(d.part_ind)} % des habitants vivent en îlot de chaleur (métropole : ${Math.round(ref)} %).`}>
+  <EnTetePage surtitre={`Code INSEE ${d.insee} · ${nb(d.ind)} habitants`} titre={d.commune}>
+    <nav slot="avant" aria-label="Fil d'Ariane" class="mb-6 text-sm">
+      <a href="/communes/">Les 28 communes</a> <span class="text-gris" aria-hidden="true">/</span>{" "}
+      <span aria-current="page" class="text-gris">{d.commune}</span>
+    </nav>
+    <p>
+      Sur 100 habitants de {d.commune}, environ {d.part_ind.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} vivent dans
+      un îlot de chaleur : {ecartTexte} {ecart >= 0 ? "de plus" : "de moins"} que pour l'ensemble de la métropole.
+    </p>
+  </EnTetePage>
+
+  <dl class="mt-10 grid gap-3 sm:grid-cols-3 sm:gap-4">
+    <div data-revele class="rounded-2xl border border-filet bg-voile p-6 transition duration-300 hover:-translate-y-1 hover:border-cobalt/50">
+      <dt class="text-sm text-gris">Habitants en îlot de chaleur</dt>
+      <dd class="condense mt-2 text-5xl font-extrabold tabular-nums" data-compte={Math.round(d.ind_icu)}>{nb(d.ind_icu)}</dd>
+      <dd class="mt-1 text-sm text-gris">sur {nb(d.ind)}</dd>
+    </div>
+    <div data-revele data-delai="100" class="rounded-2xl border border-filet bg-voile p-6 transition duration-300 hover:-translate-y-1 hover:border-cobalt/50">
+      <dt class="text-sm text-gris">Part des habitants</dt>
+      <dd class="condense mt-2 text-5xl font-extrabold tabular-nums" data-compte={d.part_ind} data-decimales="1" data-suffixe=" %">{pct(d.part_ind)}</dd>
+      <dd class="mt-1 text-sm text-gris">{ecart >= 0 ? "+" : "−"}{ecartTexte} par rapport à la métropole ({pct(ref)})</dd>
+    </div>
+    <div data-revele data-delai="200" class="rounded-2xl border border-filet bg-voile p-6 transition duration-300 hover:-translate-y-1 hover:border-cobalt/50">
+      <dt class="text-sm text-gris">Rang parmi les 28 communes</dt>
+      <dd class="condense mt-2 text-5xl font-extrabold tabular-nums" set:html={rangTexte(rang)} />
+      <dd class="mt-1 text-sm text-gris">1<sup>re</sup> = la plus exposée</dd>
+    </div>
+  </dl>
+
+  <!-- Jauge : la commune face à la métropole, sur la même échelle (0 → commune la plus exposée) -->
+  <figure data-revele class="mt-4 rounded-2xl border border-filet bg-voile p-6">
+    <figcaption class="text-sm text-gris">
+      {d.commune} ({pct(d.part_ind)}) comparée à l'ensemble de la métropole ({pct(ref)}), sur une échelle allant de 0 à la commune la plus exposée ({pct(max)}).
+    </figcaption>
+    <div class="relative mt-8 mb-6 h-3 rounded-full bg-papier" aria-hidden="true">
+      <div class="h-full origin-left animate-grandit rounded-full [animation-delay:300ms]" style={`width:${(d.part_ind / max) * 100}%;background:${barre}`}></div>
+      <div class="absolute -top-2 h-7 w-0.5 bg-encre" style={`left:${(ref / max) * 100}%`}>
+        <span class="absolute bottom-full left-1/2 mb-1 -translate-x-1/2 text-xs whitespace-nowrap text-encre">Métropole</span>
+      </div>
+    </div>
+  </figure>
+
+  <!-- Les plus fragiles : vivent-ils plus souvent en îlot de chaleur que les autres, ici ? -->
+  <dl class="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4">
+    <div data-revele class="rounded-2xl border border-filet bg-voile p-6">
+      <dt class="text-sm text-gris">80 ans et plus en îlot de chaleur</dt>
+      <dd class="condense mt-2 text-4xl font-extrabold tabular-nums">{pct(d.part_80p)}</dd>
+      <dd class="mt-1 text-sm text-gris">
+        contre {pct(d.part_ind)} de tous les habitants ({d.ecart_80p > 0 ? "+" : ""}{d.ecart_80p.toLocaleString("fr-FR")} points) ·{" "}
+        {nb(d.ind_80p)} personnes de 80 ans et plus
+      </dd>
+    </div>
+    <div data-revele data-delai="100" class="rounded-2xl border border-filet bg-voile p-6">
+      <dt class="text-sm text-gris">Ménages pauvres en îlot de chaleur</dt>
+      <dd class="condense mt-2 text-4xl font-extrabold tabular-nums">{pct(d.part_men_pauv)}</dd>
+      <dd class="mt-1 text-sm text-gris">
+        contre {pct(partMenages)} de tous les ménages ({d.ecart_pauv > 0 ? "+" : ""}{d.ecart_pauv.toLocaleString("fr-FR")} points) ·{" "}
+        {nb(d.men_pauv)} ménages pauvres
+      </dd>
+    </div>
+  </dl>
+
+  <div class="mt-4">
+    <PlotFigure
+      id="carte-commune"
+      titre={`${d.commune} dans la métropole`}
+      sousTitre="Part des habitants vivant en îlot de chaleur, par commune (11 juillet 2022). La commune de la fiche est entourée."
+      consigne="Cliquez sur une autre commune pour ouvrir sa fiche"
+      interactif
+      source="Bordeaux Métropole (îlots de chaleur, 11 juillet 2022) · Insee, Filosofi 2019 · Contours : Bordeaux Métropole"
+      alt={`Carte des 28 communes de Bordeaux Métropole colorées selon la part de leurs habitants vivant en îlot de chaleur ; ${d.commune} est entourée. Elle est classée ${rang === 1 ? "1re" : rang + "e"} sur 28, avec ${pct(d.part_ind)} contre ${pct(ref)} pour la métropole. Chaque commune est un lien vers sa fiche.`}
+      render={(document) => carteTaux(contours, communes, { document, selection: d.insee, lien: (code) => `/communes/${code}/` })}
+    />
+  </div>
+
+  <nav aria-label="Autres communes" class="mt-4 grid grid-cols-2 gap-3 sm:gap-4">
+    <a href={`/communes/${precedente.insee}/`} class="group rounded-2xl border border-filet bg-voile p-5 no-underline transition duration-300 hover:-translate-y-1 hover:border-cobalt/50">
+      <span class="block text-sm text-gris"><span class="inline-block transition-transform group-hover:-translate-x-1">←</span> Précédente</span>
+      <span class="mt-1 block font-semibold text-encre group-hover:text-cobalt">{precedente.commune}</span>
+    </a>
+    <a href={`/communes/${suivante.insee}/`} class="group rounded-2xl border border-filet bg-voile p-5 text-right no-underline transition duration-300 hover:-translate-y-1 hover:border-cobalt/50">
+      <span class="block text-sm text-gris">Suivante <span class="inline-block transition-transform group-hover:translate-x-1">→</span></span>
+      <span class="mt-1 block font-semibold text-encre group-hover:text-cobalt">{suivante.commune}</span>
+    </a>
+  </nav>
+  <p class="mt-8"><a href="/#conclusion">Revenir au récit</a></p>
+</Layout>

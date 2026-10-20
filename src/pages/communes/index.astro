@@ -1,0 +1,153 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import EnTetePage from "../../components/EnTetePage.astro";
+import communes from "../../assets/communes.json";
+import { pct, nb, tauxMetropole } from "../../lib/charts.js";
+import { barre } from "../../lib/palette.js";
+
+const liste = [...communes].sort((a, b) => a.commune.localeCompare(b.commune, "fr"));
+const max = Math.max(...communes.map((d) => d.part_ind));
+const ref = tauxMetropole(communes);
+// Nom sans accents ni tirets, pour que « saint medard » trouve « Saint-Médard-en-Jalles »
+const cle = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[-']/g, " ").toLowerCase();
+---
+
+<Layout titre="Les 28 communes" description="La part des habitants vivant en îlot de chaleur dans chacune des 28 communes de Bordeaux Métropole.">
+  <EnTetePage surtitre="Fiches communales" titre="Les 28 communes">
+    <p>Trouvez votre commune pour ouvrir sa fiche et la comparer au reste de la métropole.</p>
+  </EnTetePage>
+
+  <!-- Question du lecteur : « Où est ma commune ? » → recherche ; « Lesquelles sont les plus exposées ? » → tri -->
+  <div data-revele class="mt-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div class="w-full sm:max-w-sm">
+      <label for="recherche" class="text-sm font-semibold text-gris">Trouver ma commune</label>
+      <div class="relative mt-2">
+        <svg viewBox="0 0 16 16" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-gris" aria-hidden="true">
+          <circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.8" /><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.8" />
+        </svg>
+        <input
+          id="recherche"
+          type="search"
+          autocomplete="off"
+          placeholder="Ex. Mérignac, Saint-Médard…"
+          class="w-full rounded-xl border border-filet bg-voile py-3 pr-4 pl-11 text-encre placeholder:text-gris/70 transition hover:border-cobalt focus:border-cobalt focus:ring-4 focus:ring-cobalt/25 focus:outline-none"
+        />
+      </div>
+    </div>
+    <div role="group" aria-label="Trier les communes" class="inline-flex rounded-xl border border-filet bg-voile p-1 text-sm font-medium">
+      <button type="button" data-tri="nom" aria-pressed="true" class="rounded-lg px-4 py-2 text-gris transition aria-pressed:bg-cobalt aria-pressed:text-nuit hover:text-encre aria-pressed:hover:text-nuit">
+        De A à Z
+      </button>
+      <button type="button" data-tri="part" aria-pressed="false" class="rounded-lg px-4 py-2 text-gris transition aria-pressed:bg-cobalt aria-pressed:text-nuit hover:text-encre aria-pressed:hover:text-nuit">
+        Les plus exposées
+      </button>
+    </div>
+  </div>
+  <div data-revele class="mt-4 flex flex-wrap items-center gap-3 text-sm">
+    <label for="aller-commune" class="font-semibold text-gris">Ou aller directement à sa fiche :</label>
+    <select
+      id="aller-commune"
+      class="cursor-pointer rounded-xl border border-filet bg-voile px-3 py-2 text-encre transition hover:border-cobalt focus:border-cobalt focus:ring-4 focus:ring-cobalt/25 focus:outline-none"
+    >
+      <option value="">Choisir une commune</option>
+      {liste.map((d) => <option value={d.insee}>{d.commune}</option>)}
+    </select>
+  </div>
+  <p data-compte-resultat aria-live="polite" class="mt-4 text-sm text-gris">28 communes</p>
+
+  <div data-revele class="mt-3 overflow-hidden rounded-2xl border border-filet bg-voile">
+    <table class="w-full border-collapse text-left">
+      <caption class="sr-only">
+        Les 28 communes de Bordeaux Métropole avec leur nombre d'habitants et la part vivant en îlot de chaleur
+      </caption>
+      <thead>
+        <tr class="border-b border-filet text-sm text-gris">
+          <th scope="col" class="px-4 py-3 font-semibold sm:px-6">Commune</th>
+          <th scope="col" class="hidden px-4 py-3 text-right font-semibold sm:table-cell">Habitants</th>
+          <th scope="col" class="px-4 py-3 font-semibold sm:pr-6">En îlot de chaleur <span class="font-normal">(métropole : {pct(ref)})</span></th>
+        </tr>
+      </thead>
+      <tbody data-liste>
+        {
+          liste.map((d, i) => (
+            <tr
+              data-nom={cle(d.commune)}
+              data-part={d.part_ind}
+              data-ordre={i}
+              class="group relative border-b border-filet transition-colors last:border-0 hover:bg-cobalt-voile"
+            >
+              <th scope="row" class="px-4 py-3.5 font-semibold sm:px-6">
+                <!-- Le lien couvre toute la ligne (after:absolute) : un clic n'importe où ouvre la fiche -->
+                <a
+                  href={`/communes/${d.insee}/`}
+                  class="text-encre no-underline after:absolute after:inset-0 group-hover:text-cobalt"
+                >
+                  {d.commune}
+                </a>
+              </th>
+              <td class="hidden px-4 py-3.5 text-right text-gris tabular-nums sm:table-cell">{nb(d.ind)}</td>
+              <td class="px-4 py-3.5 sm:pr-6">
+                <div class="flex items-center gap-3">
+                  <span class="w-14 shrink-0 text-right tabular-nums">{pct(d.part_ind)}</span>
+                  <span class="hidden h-2 flex-1 overflow-hidden rounded-full bg-papier sm:block" aria-hidden="true">
+                    <span
+                      class="block h-full origin-left animate-grandit rounded-full"
+                      style={`width:${(d.part_ind / max) * 100}%;background:${barre};animation-delay:${200 + i * 30}ms`}
+                    />
+                  </span>
+                  <span class="text-gris transition-transform group-hover:translate-x-1 group-hover:text-cobalt" aria-hidden="true">→</span>
+                </div>
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+    <p data-aucun hidden class="px-6 py-8 text-center text-gris">Aucune commune ne correspond. Vérifiez l'orthographe.</p>
+  </div>
+</Layout>
+
+<script>
+  const champ = document.querySelector<HTMLInputElement>("#recherche")!;
+  const corps = document.querySelector<HTMLElement>("[data-liste]")!;
+  const lignes = [...corps.querySelectorAll<HTMLTableRowElement>("tr")];
+  const compte = document.querySelector<HTMLElement>("[data-compte-resultat]")!;
+  const aucun = document.querySelector<HTMLElement>("[data-aucun]")!;
+  const boutons = [...document.querySelectorAll<HTMLButtonElement>("[data-tri]")];
+  const cle = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[-']/g, " ").toLowerCase().trim();
+
+  function filtrer() {
+    const q = cle(champ.value);
+    let n = 0;
+    for (const l of lignes) {
+      const ok = !q || l.dataset.nom!.includes(q);
+      l.hidden = !ok;
+      if (ok) n++;
+    }
+    compte.textContent = n === 28 ? "28 communes" : `${n} commune${n > 1 ? "s" : ""} sur 28`;
+    aucun.hidden = n > 0;
+  }
+
+  function trier(par: string) {
+    const tri = [...lignes].sort((a, b) =>
+      par === "part" ? Number(b.dataset.part) - Number(a.dataset.part) : Number(a.dataset.ordre) - Number(b.dataset.ordre),
+    );
+    corps.append(...tri);
+    boutons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tri === par)));
+  }
+
+  champ.addEventListener("input", filtrer);
+  champ.addEventListener("keydown", (e) => {
+    // Entrée : ouvre directement la fiche s'il ne reste qu'une commune
+    if (e.key !== "Enter") return;
+    const visibles = lignes.filter((l) => !l.hidden);
+    if (visibles.length === 1) visibles[0].querySelector("a")!.click();
+  });
+  boutons.forEach((b) => b.addEventListener("click", () => trier(b.dataset.tri!)));
+
+  // Menu déroulant : ouvre la fiche de la commune choisie (comme au TP3, avec un / final pour Netlify)
+  document.querySelector("#aller-commune")?.addEventListener("change", (evt) => {
+    const valeur = (evt.target as HTMLSelectElement).value;
+    if (valeur) location.pathname = "/communes/" + valeur + "/";
+  });
+</script>
