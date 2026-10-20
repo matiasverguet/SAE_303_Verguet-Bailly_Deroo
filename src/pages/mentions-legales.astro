@@ -1,0 +1,105 @@
+---
+// Mentions légales et protection des données (RGPD).
+// À tenir à jour si le site ajoute un jour un formulaire, une mesure d'audience ou un service tiers.
+import Layout from "../layouts/Layout.astro";
+import EnTetePage from "../components/EnTetePage.astro";
+import { site } from "../site.config.js";
+
+const sections = [
+  { id: "editeur", label: "Éditeur" },
+  { id: "hebergement", label: "Hébergement" },
+  { id: "donnees-personnelles", label: "Données personnelles" },
+  { id: "cookies", label: "Cookies" },
+  { id: "reutilisation", label: "Réutilisation" },
+  { id: "liens", label: "Liens externes" },
+];
+---
+
+<Layout titre="Mentions légales et données personnelles" description="Éditeur, hébergement, protection des données personnelles et cookies du site.">
+  <EnTetePage surtitre="Informations légales" titre="Mentions légales et données personnelles">
+    <p>
+      Ce site est un projet étudiant sans but commercial. Il ne collecte aucune donnée personnelle sur ses visiteurs :
+      pas de compte, pas de formulaire, pas de cookie, pas de mesure d'audience.
+    </p>
+  </EnTetePage>
+
+  <nav aria-label="Sections de la page" class="border-b border-filet py-4">
+    <ul class="flex flex-wrap gap-x-6 gap-y-2 text-[0.9375rem] font-medium">
+      {sections.map((s) => <li><a href={`#${s.id}`} class="text-encre no-underline hover:text-cobalt">{s.label}</a></li>)}
+    </ul>
+  </nav>
+
+  <div class="texte max-w-3xl">
+    <section id="editeur" data-revele aria-labelledby="h-editeur" class="mt-16 scroll-mt-24">
+      <h2 id="h-editeur" class="condense font-sans text-4xl font-extrabold">Éditeur du site</h2>
+      <p class="mt-6">
+        Site réalisé par {site.auteurs.join(" et ")}, étudiants en BUT Métiers du multimédia et de l'internet (MMI) à
+        Montbéliard, Université de Franche-Comté, dans le cadre de la SAÉ 303 et du
+        <a href={site.defi}>défi « Prévention des risques à Bordeaux Métropole »</a> de l'Open Data University.
+      </p>
+      <p class="mt-4">
+        Directeurs de la publication : {site.auteurs.join(" et ")}. Pour nous contacter, ouvrez une discussion sur le
+        <a href={site.depot}>dépôt GitHub du projet</a>.
+      </p>
+    </section>
+
+    <section id="hebergement" data-revele aria-labelledby="h-hebergement" class="mt-16 scroll-mt-24">
+      <h2 id="h-hebergement" class="condense font-sans text-4xl font-extrabold">Hébergement</h2>
+      <p class="mt-6">
+        Le site est hébergé par <strong>Netlify, Inc.</strong>, San Francisco (Californie, États-Unis) —
+        <a href="https://www.netlify.com/">www.netlify.com</a>. Le code source est hébergé par GitHub, Inc.
+      </p>
+    </section>
+
+    <section id="donnees-personnelles" data-revele aria-labelledby="h-donnees" class="mt-16 scroll-mt-24">
+      <h2 id="h-donnees" class="condense font-sans text-4xl font-extrabold">Données personnelles (RGPD)</h2>
+      <p class="mt-6">
+        <strong>Nous ne collectons aucune donnée personnelle.</strong> Le site ne propose ni compte, ni formulaire, ni
+        lettre d'information, et n'utilise aucun outil de mesure d'audience ni aucune publicité. Les polices de caractères
+        sont hébergées avec le site : la consultation n'envoie aucune requête à un service tiers comme Google Fonts.
+      </p>
+      <p class="mt-4">
+        Les données affichées (îlots de chaleur, habitants par commune) sont des <strong>statistiques agrégées</strong>
+        publiques : aucune ne permet d'identifier une personne. Les chiffres de l'Insee proviennent de carreaux de 200 m,
+        déjà protégés par le secret statistique avant leur publication.
+      </p>
+      <p class="mt-4">
+        Comme tout hébergeur, Netlify enregistre des journaux techniques de connexion (adresse IP, date, page demandée)
+        pour assurer le fonctionnement et la sécurité du service. Nous n'y avons pas accès pour suivre les visiteurs.
+        Ces traitements relèvent de Netlify : voir sa
+        <a href="https://www.netlify.com/privacy/">politique de confidentialité</a>.
+      </p>
+      <p class="mt-4">
+        Vous disposez des droits prévus par le Règlement général sur la protection des données (accès, rectification,
+        effacement, opposition). Vous pouvez aussi adresser une réclamation à la
+        <a href="https://www.cnil.fr/fr/plaintes">CNIL</a>.
+      </p>
+    </section>
+
+    <section id="cookies" data-revele aria-labelledby="h-cookies" class="mt-16 scroll-mt-24">
+      <h2 id="h-cookies" class="condense font-sans text-4xl font-extrabold">Cookies</h2>
+      <p class="mt-6">
+        Le site ne dépose <strong>aucun cookie</strong> et n'utilise pas le stockage du navigateur. C'est pourquoi aucun
+        bandeau de consentement ne s'affiche : il n'y a rien à accepter ni à refuser.
+      </p>
+    </section>
+
+    <section id="reutilisation" data-revele aria-labelledby="h-reutilisation" class="mt-16 scroll-mt-24">
+      <h2 id="h-reutilisation" class="condense font-sans text-4xl font-extrabold">Données et contenus réutilisés</h2>
+      <p class="mt-6">
+        Les données proviennent de Bordeaux Métropole et de l'Insee, sous Licence Ouverte. Leurs sources exactes, dates et
+        traitements sont détaillés sur la page <a href="/methode/">Méthode</a>, où le fichier par commune est
+        téléchargeable. La photo de l'agglomération est de sky_hlv, sous licence
+        <a href="https://creativecommons.org/licenses/by/2.0/deed.fr">CC BY 2.0</a>.
+      </p>
+    </section>
+
+    <section id="liens" data-revele aria-labelledby="h-liens" class="mt-16 scroll-mt-24">
+      <h2 id="h-liens" class="condense font-sans text-4xl font-extrabold">Liens externes</h2>
+      <p class="mt-6">
+        Le site renvoie vers d'autres sites (Géorisques, Météo-France, Bordeaux Métropole, data.gouv.fr…). Nous ne sommes
+        pas responsables de leur contenu ni de leur politique de données personnelles.
+      </p>
+    </section>
+  </div>
+</Layout>
