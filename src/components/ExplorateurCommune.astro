@@ -1,0 +1,102 @@
+---
+// Route B : le graphique change chez le lecteur selon sa commune.
+// Question du lecteur : « Et dans ma commune, c'est plus ou moins que dans le reste de la métropole ? »
+// Rendu initial au build (lisible sans JavaScript), puis re-rendu côté client.
+import { JSDOM } from "jsdom";
+import Figure from "./Figure.astro";
+import { barresCommunes } from "../lib/charts.js";
+import communes from "../assets/communes.json";
+
+interface Props {
+  source: string;
+}
+const { source } = Astro.props;
+const options = [...communes].sort((a, b) => a.commune.localeCompare(b.commune, "fr"));
+const initial = barresCommunes(communes, { document: new JSDOM("").window.document });
+---
+
+<div data-explorateur>
+  <div data-revele class="relative isolate grid gap-6 overflow-hidden rounded-2xl border border-cobalt/30 bg-cobalt-voile p-5 sm:p-8 lg:grid-cols-[minmax(0,22rem)_1fr] lg:items-end">
+    <div class="pointer-events-none absolute -right-24 -bottom-24 -z-10 size-80 rounded-full bg-cobalt/15 blur-3xl" aria-hidden="true"></div>
+    <div>
+      <label for="choix-commune" class="condense block text-2xl leading-tight font-extrabold">
+        Ma commune est-elle plus exposée que le reste de la métropole&nbsp;?
+      </label>
+      <div class="relative mt-4">
+        <select
+          id="choix-commune"
+          class="w-full cursor-pointer appearance-none rounded-xl border border-filet bg-papier py-3 pr-10 pl-4 text-base font-medium text-encre transition hover:border-cobalt focus:border-cobalt focus:ring-4 focus:ring-cobalt/25 focus:outline-none"
+        >
+          <option value="">Choisir une commune</option>
+          {options.map((d) => <option value={d.insee}>{d.commune}</option>)}
+        </select>
+        <svg class="pointer-events-none absolute top-1/2 right-4 size-4 -translate-y-1/2 text-cobalt" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" />
+        </svg>
+      </div>
+    </div>
+    <p data-phrase aria-live="polite" class="texte min-h-16 text-xl">
+      Choisissez une commune pour la situer parmi les 28 communes de la métropole.
+    </p>
+  </div>
+
+  <Figure
+    id="v4-explorateur"
+    numero="Fig. 2"
+    titre="Votre commune parmi les 28 de la métropole"
+    sousTitre="Part des habitants vivant en îlot de chaleur (+3 °C ou plus au-dessus de la moyenne de la métropole, 11 juillet 2022). Pointillés : toute la métropole."
+    source={source}
+    alt="Diagramme en barres horizontales classant les 28 communes de Bordeaux Métropole selon la part de leurs habitants vivant en îlot de chaleur, de 95 % (Talence) à 1 % (Bouliac). La commune choisie apparaît en orange, les autres en gris ; une ligne pointillée indique le taux de l'ensemble de la métropole (69 %). La phrase au-dessus du graphique donne en toutes lettres la valeur et le rang de la commune choisie."
+    route="B"
+    barresSurvol
+  >
+    <div data-graphique>
+      <Fragment set:html={initial.outerHTML} />
+    </div>
+  </Figure>
+</div>
+
+<script>
+  import { barresCommunes, tauxMetropole, pct, nb, rangTexte } from "../lib/charts.js";
+  import communes from "../assets/communes.json";
+
+  const racine = document.querySelector<HTMLElement>("[data-explorateur]")!;
+  const select = racine.querySelector<HTMLSelectElement>("#choix-commune")!;
+  const phrase = racine.querySelector<HTMLElement>("[data-phrase]")!;
+  const conteneur = racine.querySelector<HTMLElement>("[data-graphique]")!;
+  const ref = tauxMetropole(communes);
+
+  function dessiner() {
+    const selection = select.value || undefined;
+    const graphique = barresCommunes(communes, {
+      selection,
+      width: Math.max(320, conteneur.clientWidth),
+    });
+    conteneur.replaceChildren(graphique);
+
+    phrase.classList.remove("animate-monte");
+    void phrase.offsetWidth; // relance l'animation
+    phrase.classList.add("animate-monte");
+
+    const d = communes.find((c) => c.insee === selection);
+    if (!d) {
+      phrase.textContent = "Choisissez une commune pour la situer parmi les 28 communes de la métropole.";
+      return;
+    }
+    const rang = [...communes].sort((a, b) => b.part_ind - a.part_ind).findIndex((c) => c.insee === d.insee) + 1;
+    const ecart = d.part_ind > ref ? "au-dessus" : "en dessous";
+    phrase.innerHTML = `À <strong>${d.commune}</strong>, ${nb(d.ind_icu)} habitants sur ${nb(d.ind)} vivent en îlot de chaleur, soit <strong class="text-cobalt">${pct(d.part_ind)}</strong> : ${ecart} du taux de la métropole (${pct(ref)}). ${rangTexte(rang)} commune sur 28. Chez les 80 ans et plus : ${pct(d.part_80p)}. <a href="/communes/${d.insee}/">Voir la fiche de ${d.commune}</a>`;
+  }
+
+  select.addEventListener("change", dessiner);
+
+  // Re-rendu à la largeur réelle (lisible sur mobile), sans redessiner à chaque pixel
+  let attente: number | undefined;
+  let largeur = 0;
+  new ResizeObserver(() => {
+    if (conteneur.clientWidth === largeur) return;
+    largeur = conteneur.clientWidth;
+    clearTimeout(attente);
+    attente = window.setTimeout(dessiner, 150);
+  }).observe(conteneur);
+</script>

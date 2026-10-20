@@ -1,0 +1,25 @@
+---
+// Une étape du récit : numéro et étiquette dans la marge (écran large), titre porteur, contenu.
+interface Props {
+  id: string;
+  numero: string;
+  etape: string;
+  titre: string;
+}
+const { id, numero, etape, titre } = Astro.props;
+---
+
+<section id={id} aria-labelledby={`h-${id}`} class="mt-32 scroll-mt-24 lg:grid lg:grid-cols-[11rem_1fr] lg:gap-10">
+  <div class="mb-4 lg:mb-0">
+    <div data-revele class="flex items-baseline gap-3 lg:sticky lg:top-28 lg:block">
+      <p class="condense contour text-6xl leading-none font-black tabular-nums lg:text-8xl" aria-hidden="true">{numero}</p>
+      <p class="surtitre text-gris lg:mt-2">{etape}</p>
+    </div>
+  </div>
+  <div class="min-w-0">
+    <h2 id={`h-${id}`} data-revele class="condense max-w-4xl text-4xl leading-[0.95] font-extrabold sm:text-5xl">
+      <span class="sr-only">Étape {numero}, {etape} : </span>{titre}
+    </h2>
+    <slot />
+  </div>
+</section>

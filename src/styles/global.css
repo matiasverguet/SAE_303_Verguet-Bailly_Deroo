@@ -1,1 +1,173 @@
 @import "tailwindcss";
+@import "@fontsource-variable/archivo/standard.css";
+@import "@fontsource-variable/source-serif-4/index.css";
+
+/* ---------------------------------------------------------------
+   Direction artistique : « la ville, la nuit, qui rend la chaleur ».
+   L'INTERFACE est froide (nuit, bleu glacier) ; seules les DONNÉES
+   brillent en couleurs chaudes (src/lib/palette.js). Les deux palettes
+   ne partagent aucune couleur.
+   Les noms de jetons sont sémantiques : encre = texte, papier = fond.
+   --------------------------------------------------------------- */
+@theme {
+  --color-nuit: #07090c;        /* fond le plus profond : bandeau, hero, pied de page */
+  --color-papier: #0e1116;      /* fond de page */
+  --color-voile: #161a21;       /* surfaces (cartes, tableaux) */
+  --color-filet: #283039;       /* filets */
+  --color-encre: #edf0f3;       /* texte principal, 16:1 sur le fond */
+  --color-gris: #9aa4b0;        /* texte secondaire, 7.4:1 sur le fond */
+  --color-cobalt: #8fb3ff;      /* accent de charte (bleu glacier), 8.9:1 sur le fond */
+  --color-cobalt-voile: #141d2e;
+
+  --font-sans: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-texte: "Source Serif 4 Variable", Georgia, serif;
+
+  --animate-zoom-lent: zoom-lent 24s ease-out both;
+  --animate-monte: monte 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-apparait: apparait 0.5s ease-out both;
+  --animate-grandit: grandit 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  @keyframes grandit {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+  }
+
+  @keyframes zoom-lent {
+    from { transform: scale(1.12); }
+    to { transform: scale(1); }
+  }
+  @keyframes monte {
+    from { opacity: 0; transform: translateY(28px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes apparait {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+@layer base {
+  html {
+    @apply bg-papier text-encre;
+    /* Les lueurs décoratives peuvent déborder de la colonne sans créer de défilement horizontal */
+    overflow-x: clip;
+    color-scheme: dark;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+  }
+  p { text-wrap: pretty; }
+  a {
+    @apply text-cobalt underline decoration-1 underline-offset-[3px] transition-colors;
+  }
+  a:hover { @apply decoration-2; }
+  :focus-visible {
+    outline: 3px solid var(--color-cobalt);
+    outline-offset: 3px;
+  }
+  ::selection { background: var(--color-cobalt); color: var(--color-nuit); }
+}
+
+@utility condense {
+  font-stretch: 72%;
+}
+@utility texte {
+  font-family: var(--font-texte);
+  font-size: 1.125rem;
+  line-height: 1.65;
+}
+@utility surtitre {
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* Chiffre géant en contour (numéros de chapitre) */
+@utility contour {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--color-cobalt);
+}
+
+/* ---------------------------------------------------------------
+   Apparition au défilement : uniquement si JavaScript tourne
+   (classe .js posée dans le <head>) ET si le lecteur accepte les
+   animations. Sans JS, tout reste visible.
+   --------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-revele] {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition-delay: var(--delai, 0ms);
+  }
+  .js [data-revele].est-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Transitions douces entre les pages (navigateurs qui le gèrent) */
+  @view-transition { navigation: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Les SVG de Plot s'adaptent à la largeur du conteneur */
+figure svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Cartes : survol d'une commune (le lien vers sa fiche est porté par Plot) */
+.carte-interactive a path {
+  transition: opacity 0.2s ease, stroke-width 0.2s ease;
+}
+.carte-interactive:hover a path { opacity: 0.55; }
+.carte-interactive a:hover path,
+.carte-interactive a:focus-visible path {
+  opacity: 1;
+  stroke: var(--color-encre);
+  stroke-width: 2.5px;
+}
+
+/* Graphique redessiné par l'explorateur : fondu à chaque changement */
+[data-graphique] > svg,
+[data-graphique] > figure {
+  animation: var(--animate-apparait);
+}
+
+/* Diagrammes en barres : la barre survolée reste orange, les autres passent en gris.
+   Couleurs reprises de src/lib/palette.js (barre = #fd8d3c, neutre = #39414c). */
+.barres-survol g[aria-label="bar"] rect {
+  transition: fill 0.2s ease;
+}
+.barres-survol svg:has(g[aria-label="bar"] rect:hover) g[aria-label="bar"] rect {
+  fill: #39414c;
+}
+.barres-survol svg:has(g[aria-label="bar"] rect:hover) g[aria-label="bar"] rect:hover {
+  fill: #fd8d3c;
+}
+
+/* Légendes de Plot (pastilles et dégradé) : plus grandes que les 10 px par défaut */
+figure [class*="-swatches"] {
+  font-size: 14px !important;
+}
+figure [class*="-swatch"] > svg {
+  width: 16px;
+  height: 16px;
+}
+figure svg[class*="-ramp"] {
+  font-size: 13px;
+}
