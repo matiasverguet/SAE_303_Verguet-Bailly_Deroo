@@ -1,0 +1,235 @@
+---
+import Layout from "../layouts/Layout.astro";
+import EnTetePage from "../components/EnTetePage.astro";
+import ACompleter from "../components/ACompleter.astro";
+import { site } from "../site.config.js";
+import { sources } from "../data/sources.js";
+import communes from "../assets/communes.json";
+import { pct, tauxMetropole } from "../lib/charts.js";
+
+const ref = tauxMetropole(communes);
+const moyenneSimple = communes.reduce((s, d) => s + d.part_ind, 0) / communes.length;
+// Fichier téléchargeable : l'export du notebook tel quel (généré par src/pages/donnees/[fichier].js)
+const telechargements = [
+  {
+    id: "communes-ilots-de-chaleur",
+    titre: "Habitants en îlot de chaleur, par commune",
+    description: "Export du notebook, une ligne par commune : habitants, 80 ans et plus, ménages et ménages pauvres, au total et en îlot de chaleur, avec les parts (%) et les écarts (points).",
+    donnees: communes,
+  },
+];
+
+// Une ligne par visualisation : pourquoi cette route d'export ?
+const routes = [
+  {
+    viz: "Fig. 1 · Carte des communes",
+    route: "A — au build",
+    pourquoi: "La carte est la même pour tout le monde : un SVG statique suffit, aucun JavaScript à charger.",
+  },
+  {
+    viz: "Fig. 2 · « Ma commune est-elle plus exposée ? »",
+    route: "B — chez le lecteur",
+    pourquoi: "Le graphique change selon la commune choisie : il doit bouger chez le lecteur. Un premier rendu est fait au build pour rester lisible sans JavaScript.",
+  },
+  {
+    viz: "Fig. 3 · 80 ans et plus / tous les habitants",
+    route: "A — au build",
+    pourquoi: "Même graphique pour tous les lecteurs ; il s'affiche immédiatement, sans script.",
+  },
+  {
+    viz: "Fiches communes",
+    route: "C — une page par valeur",
+    pourquoi: "28 valeurs seulement : une page statique par commune (getStaticPaths), partageable et indexable, sans calcul chez le lecteur.",
+  },
+];
+
+const sections = [
+  { id: "sources", label: "Sources" },
+  { id: "traitements", label: "Traitements" },
+  { id: "choix", label: "Choix" },
+  { id: "limites", label: "Limites" },
+  { id: "telecharger", label: "Données" },
+];
+---
+
+<Layout titre="Méthode" description="Sources, traitements, limites et données téléchargeables du site.">
+  <EnTetePage surtitre="Transparence" titre="Méthode">
+    <p>
+      Tout ce qui est publié ici peut être vérifié : d'où viennent les données, ce que nous en avons fait, et ce
+      qu'elles ne disent pas. Le détail des calculs et des contrôles est dans le <a href={site.notebook}>notebook Observable</a>.
+    </p>
+  </EnTetePage>
+
+  <nav aria-label="Sections de la page" class="border-b border-filet py-4">
+    <ul class="flex flex-wrap gap-x-6 gap-y-2 text-[0.9375rem] font-medium">
+      {sections.map((s) => <li><a href={`#${s.id}`} class="text-encre no-underline hover:text-cobalt">{s.label}</a></li>)}
+    </ul>
+  </nav>
+
+  <section id="sources" data-revele aria-labelledby="h-sources" class="mt-16 scroll-mt-24">
+    <h2 id="h-sources" class="condense text-4xl font-extrabold">Sources</h2>
+    <div class="mt-6 overflow-hidden rounded-2xl border border-filet bg-voile">
+      {
+        sources.map((s) => (
+          <article class="grid gap-4 border-b border-filet p-6 transition-colors last:border-0 hover:bg-cobalt-voile lg:grid-cols-[1fr_1.4fr] lg:gap-10">
+            <h3 class="text-lg leading-snug font-bold">
+              {s.nom.startsWith("TODO") ? <ACompleter valeur={s.nom} /> : <a href={s.url}>{s.nom}</a>}
+            </h3>
+            <dl class="grid grid-cols-[7.5rem_1fr] gap-x-4 gap-y-2 text-[0.9375rem]">
+              <dt class="text-gris">Producteur</dt><dd><ACompleter valeur={s.producteur} /></dd>
+              <dt class="text-gris">Millésime</dt><dd><ACompleter valeur={s.millesime} /></dd>
+              <dt class="text-gris">Consulté le</dt><dd><ACompleter valeur={s.consulte} /></dd>
+              <dt class="text-gris">Licence</dt><dd><ACompleter valeur={s.licence} /></dd>
+              <dt class="text-gris">Usage</dt><dd><ACompleter valeur={s.usage} /></dd>
+            </dl>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+
+  <section id="traitements" data-revele aria-labelledby="h-traitements" class="mt-16 max-w-3xl scroll-mt-24">
+    <h2 id="h-traitements" class="condense text-4xl font-extrabold">Traitements appliqués</h2>
+    <ol class="texte mt-6 space-y-4">
+      <li class="grid grid-cols-[2.5rem_1fr]">
+        <span class="font-sans font-bold text-cobalt">01</span>
+        <span>Îlots de chaleur exportés déjà filtrés depuis le datahub de Bordeaux Métropole : référence « moyenne de la métropole » (BM), relevé du 11 juillet 2022, zones à +3&nbsp;°C ou plus.</span>
+      </li>
+      <li class="grid grid-cols-[2.5rem_1fr]">
+        <span class="font-sans font-bold text-cobalt">02</span>
+        <span>Fichier Insee national (2&nbsp;287&nbsp;884 carreaux, 454&nbsp;Mo) réduit aux 6&nbsp;751 carreaux des 28 communes, avec la position du centre de chaque carreau calculée à partir de son identifiant.</span>
+      </li>
+      <li class="grid grid-cols-[2.5rem_1fr]">
+        <span class="font-sans font-bold text-cobalt">03</span>
+        <span>Chaque carreau est rattaché à la commune qui contient son centre (877 carreaux sont à cheval sur plusieurs communes). 125 carreaux, soit 3&nbsp;838 habitants (0,5&nbsp;%), ont leur centre hors de la métropole : ils sont retirés. Un carreau est « en îlot de chaleur » si son centre tombe dans une zone à +3&nbsp;°C ou plus.</span>
+      </li>
+      <li class="grid grid-cols-[2.5rem_1fr]">
+        <span class="font-sans font-bold text-cobalt">04</span>
+        <span>Par commune : habitants en îlot de chaleur ÷ habitants de la commune (Insee, Filosofi 2019, même source en haut et en bas). Même calcul pour les 80 ans et plus et pour les ménages pauvres. Arrondi à deux décimales à l'export. Contours simplifiés avec mapshaper (3&nbsp;% des points, 25&nbsp;Ko).</span>
+      </li>
+    </ol>
+    <p class="mt-6">
+      Le détail du code, des contrôles et des distributions est dans le <a href={site.notebook}>notebook Observable</a>.
+    </p>
+  </section>
+
+  <section id="choix" data-revele aria-labelledby="h-choix" class="mt-16 scroll-mt-24">
+    <h2 id="h-choix" class="condense text-4xl font-extrabold">Choix de représentation</h2>
+    <div class="texte mt-6 max-w-3xl space-y-4">
+      <p>
+        <strong>Une part, pas un nombre.</strong> Compter les habitants avantagerait toujours les communes les plus
+        peuplées. Chaque commune est donc décrite par la part de ses habitants vivant en îlot de chaleur.
+      </p>
+      <p>
+        <strong>Une référence honnête.</strong> Le taux de la métropole ({pct(ref)}) est le total des habitants en îlot de
+        chaleur divisé par le total des habitants, et non la moyenne des 28 taux communaux ({pct(moyenneSimple)}), qui
+        donnerait autant de poids à Saint-Vincent-de-Paul (927 habitants) qu'à Bordeaux (230&nbsp;202).
+      </p>
+      <p>
+        <strong>Cinq classes de couleur.</strong> Sur la carte, des tranches de 20 points plutôt qu'un dégradé continu, pour qu'on puisse
+        dire « ma commune est dans la tranche la plus haute ». Les orangés sont réservés aux données ; l'interface n'en
+        utilise jamais.
+      </p>
+    </div>
+    <div class="mt-10 overflow-x-auto">
+      <table class="w-full min-w-[40rem] border-collapse text-left text-[0.9375rem]">
+        <caption class="mb-3 text-left font-bold">Comment chaque graphique arrive dans la page</caption>
+        <thead>
+          <tr class="border-b border-filet text-sm text-gris">
+            <th scope="col" class="py-2 pr-6 font-semibold">Visualisation</th>
+            <th scope="col" class="py-2 pr-6 font-semibold">Route d'export</th>
+            <th scope="col" class="py-2 font-semibold">Pourquoi</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            routes.map((r) => (
+              <tr class="border-b border-filet align-top">
+                <th scope="row" class="py-3 pr-6 font-semibold">{r.viz}</th>
+                <td class="py-3 pr-6 whitespace-nowrap text-cobalt">{r.route}</td>
+                <td class="py-3">{r.pourquoi}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="limites" data-revele aria-labelledby="h-limites" class="mt-16 max-w-3xl scroll-mt-24">
+    <h2 id="h-limites" class="condense text-4xl font-extrabold">Limites et biais</h2>
+    <ul class="texte mt-6 space-y-4">
+      <li class="rounded-r-xl border-l-[3px] border-cobalt bg-voile py-3 pr-4 pl-4">
+        <strong>La chaleur du sol, pas de l'air, et un seul jour.</strong> Le satellite mesure la température des toits,
+        des routes et des sols le 11 juillet 2022 : ce n'est ni la chaleur ressentie, ni une moyenne de l'été.
+      </li>
+      <li class="rounded-r-xl border-l-[3px] border-cobalt bg-voile py-3 pr-4 pl-4">
+        <strong>Une référence qui inclut forêts et champs.</strong> « Îlot de chaleur » veut dire « plus chaud que la
+        moyenne du territoire » : environ 31&nbsp;% de la surface de la métropole ressort à +3&nbsp;°C ou plus.
+      </li>
+      <li class="rounded-r-xl border-l-[3px] border-cobalt bg-voile py-3 pr-4 pl-4">
+        <strong>La méthode du centre.</strong> Seules 928 zones chaudes sur 9&nbsp;697 contiennent le centre d'un carreau.
+        L'erreur joue dans les deux sens (petites zones oubliées, carreaux à moitié chauds comptés en entier) : les parts
+        sont des ordres de grandeur.
+      </li>
+      <li class="rounded-r-xl border-l-[3px] border-cobalt bg-voile py-3 pr-4 pl-4">
+        <strong>Des habitants absents.</strong> Filosofi (2019) compte environ 768&nbsp;000 habitants, contre environ
+        854&nbsp;000 dans la population officielle : il ne compte que les ménages en logement ordinaire. Les résidents
+        d'EHPAD, les étudiants en résidence et les sans-abri manquent, donc les 80 ans et plus les plus dépendants aussi.
+      </li>
+      <li class="rounded-r-xl border-l-[3px] border-cobalt bg-voile py-3 pr-4 pl-4">
+        <strong>Les petits effectifs et le secret statistique.</strong> 2&nbsp;074 carreaux ont des valeurs estimées par
+        l'Insee (environ 3&nbsp;% des habitants). Dans les petites communes, quelques personnes suffisent à faire varier une
+        part de plusieurs points.
+      </li>
+      <li class="rounded-r-xl border-l-[3px] border-cobalt bg-voile py-3 pr-4 pl-4">
+        <strong>Un constat, pas une explication.</strong> On montre où vivent les gens par rapport aux îlots de chaleur ;
+        on n'avance aucune cause.
+      </li>
+    </ul>
+  </section>
+
+  <section id="telecharger" data-revele aria-labelledby="h-telecharger" class="mt-16 scroll-mt-24">
+    <h2 id="h-telecharger" class="condense text-4xl font-extrabold">Télécharger les données du site</h2>
+    <p class="mt-3 max-w-2xl text-gris">Exactement le fichier utilisé par les graphiques : l'export du notebook, une ligne par commune. Aucun fichier brut du défi n'est publié.</p>
+    <ul class="mt-6 overflow-hidden rounded-2xl border border-filet bg-voile">
+      {
+        telechargements.map((t) => (
+          <li class="flex flex-col gap-3 border-b border-filet p-5 transition-colors last:border-0 hover:bg-cobalt-voile sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            <div>
+              <p class="font-bold">{t.titre}</p>
+              <p class="text-[0.9375rem] text-gris">{t.description} {t.donnees.length} lignes.</p>
+            </div>
+            <div class="flex gap-2">
+              <a href={`/donnees/${t.id}.csv`} download class="inline-flex items-center gap-2 rounded-lg border border-cobalt/60 px-4 py-1.5 text-sm font-semibold text-cobalt no-underline transition hover:-translate-y-0.5 hover:bg-cobalt hover:text-nuit">
+                CSV
+              </a>
+              <a href={`/donnees/${t.id}.json`} download class="inline-flex items-center gap-2 rounded-lg border border-cobalt/60 px-4 py-1.5 text-sm font-semibold text-cobalt no-underline transition hover:-translate-y-0.5 hover:bg-cobalt hover:text-nuit">
+                JSON
+              </a>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section id="credits" data-revele aria-labelledby="h-credits" class="mt-16 max-w-3xl scroll-mt-24">
+    <h2 id="h-credits" class="condense text-4xl font-extrabold">Crédits</h2>
+    <p class="texte mt-6">
+      Photo de l'en-tête : vue aérienne de l'agglomération bordelaise, 12 septembre 2019, par
+      <a href="https://www.flickr.com/photos/91124353@N05/50525030301/">sky_hlv</a>
+      (<a href="https://commons.wikimedia.org/wiki/File:Bordeaux_(France).jpg">Wikimedia Commons</a>), licence
+      <a href="https://creativecommons.org/licenses/by/2.0/deed.fr">CC BY 2.0</a>. Recadrée pour retirer le cadre d'origine.
+    </p>
+  </section>
+
+  <section id="ia" data-revele aria-labelledby="h-ia" class="mt-16 max-w-3xl scroll-mt-24">
+    <h2 id="h-ia" class="condense text-4xl font-extrabold">Usage de l'IA</h2>
+    <p class="texte mt-6">
+      Une IA (Claude) a servi à écrire une partie du code du site et des textes d'accompagnement. Les choix de
+      représentation, les chiffres et l'analyse sont les nôtres et ont été vérifiés dans les sources. Le détail des
+      demandes et des corrections figure dans le journal IA du <a href={site.notebook}>notebook</a>.
+    </p>
+  </section>
+</Layout>
