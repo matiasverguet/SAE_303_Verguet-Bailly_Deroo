@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "astro-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "--host", "127.0.0.1"], "url": "http://127.0.0.1:4321", "port": 4321 }
+  ]
+}
