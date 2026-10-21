@@ -6,6 +6,7 @@ export const site = {
   auteurs: ["Matias Verguet--Bailly", "Valentin Deroo"],
   notebook: "https://observablehq.com/@mmi-montbeliard/sae-303-gr-02",
   depot: "https://github.com/matiasverguet/SAE_303_Verguet-Bailly_Deroo",
+  reutilisation: "https://www.data.gouv.fr/reuses/chaleur-en-ville-qui-vit-dans-les-ilots-de-chaleur-de-bordeaux-metropole",
   defi: "https://defis.data.gouv.fr/defis/prevention-des-risques-a-bordeaux-metropole",
   // Les données du site sont l'export réel du notebook : plus de bandeau « données factices ».
   donneesDemo: false,

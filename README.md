@@ -1,4 +1,5 @@
-- URL site WEB : - URL site WEB : https://sae303-verguet-deroo.netlify.app/
+- URL site WEB : https://sae303-verguet-deroo.netlify.app/
+- URL réutilisation data.gouv.fr : https://www.data.gouv.fr/reuses/chaleur-en-ville-qui-vit-dans-les-ilots-de-chaleur-de-bordeaux-metropole
 - URL Notebook Observable : https://observablehq.com/@mmi-montbeliard/sae-303-gr-02
 - Nom : Verguet--Bailly 
 - Prénom :Matias
